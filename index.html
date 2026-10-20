@@ -131,17 +131,31 @@
   </section>
 </main>
 
-<div id="sendeleiste" class="sendeleiste" hidden>
-  <button id="senden" class="btn-haupt">An Mail übergeben</button>
-  <button id="leeren" class="btn">Leeren</button>
+<div class="unten">
+  <div id="sendeleiste" class="sendeleiste" hidden>
+    <button id="senden" class="btn-haupt">An Mail übergeben</button>
+    <button id="leeren" class="btn">Leeren</button>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab aktiv" data-seite="senden"><span>▲</span>Senden</button>
+    <button class="tab" data-seite="regeln"><span>◎</span>Regeln</button>
+    <button class="tab" data-seite="verlauf"><span>≡</span>Verlauf</button>
+    <button class="tab" data-seite="mehr"><span>⚙</span>Mehr</button>
+  </nav>
 </div>
 
-<nav class="tabs">
-  <button class="tab aktiv" data-seite="senden"><span>▲</span>Senden</button>
-  <button class="tab" data-seite="regeln"><span>◎</span>Regeln</button>
-  <button class="tab" data-seite="verlauf"><span>≡</span>Verlauf</button>
-  <button class="tab" data-seite="mehr"><span>⚙</span>Mehr</button>
-</nav>
+<div id="bildansicht" class="bildansicht" hidden>
+  <div class="bildansicht-kopf">
+    <button id="bildansicht-zu" class="text-btn">Schließen</button>
+    <strong id="bildansicht-name"></strong>
+    <span style="width:62px"></span>
+  </div>
+  <div class="bildansicht-flaeche">
+    <img id="bildansicht-bild" alt="">
+  </div>
+  <p class="bildansicht-fuss" id="bildansicht-fuss"></p>
+</div>
 
 <!-- ---------------------------------------------------------- Regel bearbeiten -->
 <div id="editor" class="vollbild" hidden>

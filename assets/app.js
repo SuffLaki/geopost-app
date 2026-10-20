@@ -1,6 +1,6 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.3";
+const VERSION = "1.4";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
@@ -318,10 +318,10 @@ function kopfhoeheSetzen() {
   const kopf = document.querySelector(".kopf");
   document.documentElement.style.setProperty("--kopfhoehe",
     (kopf ? kopf.offsetHeight : 58) + "px");
-  // die Reiterleiste darf die Knöpfe darüber nie verdecken
-  const tabs = document.querySelector(".tabs");
-  document.documentElement.style.setProperty("--tabhoehe",
-    (tabs ? tabs.offsetHeight : 66) + "px");
+  // so viel Platz braucht der feste Block am unteren Rand
+  const unten = document.querySelector(".unten");
+  document.documentElement.style.setProperty("--untenhoehe",
+    (unten ? unten.offsetHeight : 140) + "px");
 }
 
 function zeichneFotos() {
@@ -343,7 +343,10 @@ function zeichneFotos() {
                           fertig: "übergeben" }[f.zustand];
     return `
     <div class="foto">
-      <img src="${f.vorschau}" alt="">
+      <span class="bildfeld" data-gross="${f.id}">
+        <img src="${f.vorschau}" alt="Foto ansehen">
+        <span class="lupe">ansehen</span>
+      </span>
       <div class="mitte">
         <span class="name">${esc(f.name)}</span>
         <div class="meta">${esc(datumText(f.daten.aufgenommen, f.datumVonDatei))} ·
@@ -359,6 +362,10 @@ function zeichneFotos() {
     </div>`;
   }).join("");
 
+  $("liste").querySelectorAll("[data-gross]").forEach((b) => {
+    b.onclick = () => bildGrossZeigen(parseInt(b.dataset.gross, 10));
+  });
+
   $("liste").querySelectorAll("[data-weg]").forEach((b) => {
     b.onclick = () => {
       const id = parseInt(b.dataset.weg, 10);
@@ -369,6 +376,35 @@ function zeichneFotos() {
     };
   });
 }
+
+/* ---------------------------------------------------------------- Foto gross ansehen */
+function bildGrossZeigen(id) {
+  const f = fotos.find((x) => x.id === id);
+  if (!f) return;
+  $("bildansicht-bild").src = f.vorschau;
+  $("bildansicht-name").textContent = f.name;
+  const gestempelt = f.fertig && f.fertig !== f.datei && optionen.stempel
+    && stempelZeilen(f).length > 0;
+  const groesse = ((f.fertig || f.datei).size / 1048576).toFixed(1) + " MB";
+  $("bildansicht-fuss").textContent = gestempelt
+    ? "So geht das Foto raus — mit den Geodaten im Bild · " + groesse
+    : (f.stempelFehler
+       ? f.stempelFehler
+       : (f.daten.lat === null
+          ? "Ohne Geodaten: in diesem Foto steckt keine Koordinate · " + groesse
+          : "Ohne Beschriftung im Bild (unter Mehr einschaltbar) · " + groesse));
+  $("bildansicht").hidden = false;
+}
+
+$("bildansicht-zu").onclick = () => { $("bildansicht").hidden = true; };
+$("bildansicht").onclick = (ev) => {
+  if (ev.target.id === "bildansicht" || ev.target.tagName === "IMG") {
+    $("bildansicht").hidden = true;
+  }
+};
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") $("bildansicht").hidden = true;
+});
 
 /* ---------------------------------------------------------------- Übergabe an Mail */
 async function anMailUebergeben(gruppe, regel) {
@@ -434,6 +470,10 @@ $("senden").onclick = async () => {
 };
 
 $("leeren").onclick = () => {
+  const offen = fotos.filter((f) => f.zustand !== "fertig").length;
+  if (offen && !confirm(offen === 1
+      ? "Das Foto aus der Liste entfernen? Es wurde noch nicht übergeben."
+      : offen + " Fotos aus der Liste entfernen? Sie wurden noch nicht übergeben.")) return;
   fotos.forEach((f) => URL.revokeObjectURL(f.vorschau));
   fotos = [];
   zeichneFotos();
