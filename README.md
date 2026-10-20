@@ -21,7 +21,9 @@ Keine Anmeldung, kein Konto, kein Server, kein PC. Fotos und Regeln bleiben auf 
 - **Mail-Vorlagen** mit Platzhaltern: `{dateiname}` `{datum}` `{koordinaten}` `{ort}` `{karte}`
   `{regel}` `{hoehe}` `{kamera}` `{heute}`
 - **Geodaten im Bild** — Koordinaten, Aufnahmezeit, Höhe, Ort und Regelname werden unten ins
-  Foto eingeblendet, damit sie auch im Ausdruck und in der Akte stehen (abschaltbar unter *Mehr*)
+  Foto eingeblendet, damit sie auch im Ausdruck und in der Akte stehen (abschaltbar unter *Mehr*).
+  Stammt die Koordinate nicht aus dem Foto, sondern vom Gerät, steht dort „(per GPS erfasst)“.
+- **Großansicht** — ein Tipp auf das Vorschaubild zeigt das Foto so, wie es verschickt wird
 - **Mehrere Fotos auf einmal** — nach Regeln gruppiert, je Regel eine Mail
 - **Verlauf** — was wann an wen ging
 - **Sicherung** — Regeln als Datei exportieren und auf einem anderen Gerät einlesen

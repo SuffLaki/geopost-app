@@ -1,10 +1,13 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.4";
+const VERSION = "1.5";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
                      "hoehe", "kamera", "heute"];
+// Woher die Koordinate stammt. Aus dem Foto: kein Zusatz. Beim Erfassen gemessen:
+// dieser Vermerk - kurz genug für den Stempel und im Protokoll eindeutig.
+const HERKUNFT_GEMESSEN = "(per GPS erfasst)";
 const STANDARD_BETREFF = "Foto {dateiname} - {ort}";
 const STANDARD_TEXT =
   "Automatisch weitergeleitetes Foto\n\n"
@@ -132,7 +135,7 @@ function werteFuer(regel, foto) {
   const lat = foto.daten.lat;
   const koord = lat === null ? "keine Geodaten"
     : lat.toFixed(6) + ", " + foto.daten.lon.toFixed(6)
-      + (foto.standortVomHandy ? " (Standort des Handys)" : "");
+      + (foto.standortVomHandy ? " " + HERKUNFT_GEMESSEN : "");
   return {
     dateiname: foto.name,
     datum: datumText(foto.daten.aufgenommen, foto.datumVonDatei),
@@ -171,7 +174,7 @@ async function bildLaden(datei) {
 function stempelZeilen(foto) {
   if (foto.daten.lat === null) return [];
   const koord = foto.daten.lat.toFixed(6) + ", " + foto.daten.lon.toFixed(6)
-    + (foto.standortVomHandy ? "  (Standort des Handys)" : "");
+    + (foto.standortVomHandy ? "   " + HERKUNFT_GEMESSEN : "");
   const zweite = [datumText(foto.daten.aufgenommen, foto.datumVonDatei),
                   foto.daten.hoehe === null ? "" : Math.round(foto.daten.hoehe) + " m ü. NN"]
     .filter(Boolean).join("   ·   ");
@@ -351,7 +354,7 @@ function zeichneFotos() {
         <span class="name">${esc(f.name)}</span>
         <div class="meta">${esc(datumText(f.daten.aufgenommen, f.datumVonDatei))} ·
           ${(f.datei.size / 1048576).toFixed(1)} MB</div>
-        <div class="meta">${esc(koord)}${f.standortVomHandy ? " (Handy-Standort)" : ""}${
+        <div class="meta">${esc(koord)}${f.standortVomHandy ? " " + HERKUNFT_GEMESSEN : ""}${
           f.ort ? " · " + esc(f.ort) : ""}</div>
         <span class="zustand z-${f.zustand}">${zustandText}</span>
         <div class="meta">${f.regel ? "An: " + esc(f.regel.name) + " · "
