@@ -1,7 +1,7 @@
 /* GeoPost - Service Worker: die App vollständig offline bereithalten.
    VERSION beim Ändern hochzählen, damit Geräte die neue Fassung laden. */
 
-const VERSION = "geopost-app-v1";
+const VERSION = "geopost-app-v2";
 const DATEIEN = [
   "./",
   "./index.html",

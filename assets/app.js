@@ -1,6 +1,6 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
@@ -16,7 +16,7 @@ const STANDARD_TEXT =
   + "Regel:        {regel}\n";
 
 let regeln = [];
-let optionen = { geocode: false, standort: false, kleiner: true };
+let optionen = { geocode: false, standort: false, kleiner: true, stempel: true };
 let verlauf = [];
 let fotos = [];
 let laufendeId = 1;
@@ -150,19 +150,83 @@ function werteFuer(regel, foto) {
 const fuelle = (vorlage, werte) =>
   Object.keys(werte).reduce((t, k) => t.split("{" + k + "}").join(werte[k]), vorlage || "");
 
-/* Foto fürs Versenden verkleinern (die Koordinaten stehen im Text) */
-async function vielleichtVerkleinern(datei) {
-  if (!optionen.kleiner || datei.size < 900 * 1024) return datei;
+/* Zeilen, die unten ins Foto geschrieben werden */
+function stempelZeilen(foto) {
+  if (foto.daten.lat === null) return [];
+  const koord = foto.daten.lat.toFixed(6) + ", " + foto.daten.lon.toFixed(6)
+    + (foto.standortVomHandy ? "  (Standort des Handys)" : "");
+  const zweite = [datumText(foto.daten.aufgenommen),
+                  foto.daten.hoehe === null ? "" : Math.round(foto.daten.hoehe) + " m ü. NN"]
+    .filter(Boolean).join("   ·   ");
+  const dritte = [foto.ort, foto.regel ? foto.regel.name : ""].filter(Boolean).join("   ·   ");
+  return [koord, zweite, dritte].filter(Boolean);
+}
+
+/* Foto aufbereiten: auf Wunsch verkleinern und die Geodaten sichtbar einbrennen */
+async function fotoAufbereiten(foto) {
+  const datei = foto.datei;
+  const zeilen = optionen.stempel ? stempelZeilen(foto) : [];
+  const verkleinern = optionen.kleiner && datei.size >= 900 * 1024;
+  if (!zeilen.length && !verkleinern) return datei;
+
   try {
     const bild = await createImageBitmap(datei);
-    const faktor = Math.min(1, 1600 / Math.max(bild.width, bild.height));
+    const faktor = verkleinern ? Math.min(1, 1600 / Math.max(bild.width, bild.height)) : 1;
     const flaeche = document.createElement("canvas");
     flaeche.width = Math.round(bild.width * faktor);
     flaeche.height = Math.round(bild.height * faktor);
-    flaeche.getContext("2d").drawImage(bild, 0, 0, flaeche.width, flaeche.height);
-    const klein = await new Promise((f) => flaeche.toBlob(f, "image/jpeg", 0.82));
-    if (!klein || klein.size >= datei.size) return datei;
-    return new File([klein], datei.name.replace(/\.(hei[cf]|png|tiff?|webp)$/i, ".jpg"),
+    const stift = flaeche.getContext("2d");
+    stift.drawImage(bild, 0, 0, flaeche.width, flaeche.height);
+
+    if (zeilen.length) {
+      const grund = Math.max(13, Math.round(flaeche.width / 44));
+      const luft = Math.round(grund * 0.9);
+      const hoeheErste = Math.round(grund * 1.6);
+      const hoeheWeitere = Math.round(grund * 1.25);
+      const abstand = Math.round(grund * 0.3);
+      const textHoehe = hoeheErste
+        + (zeilen.length - 1) * (hoeheWeitere + abstand);
+      const balken = luft * 2 + textHoehe;
+      const oben = flaeche.height - balken;
+
+      const verlauf = stift.createLinearGradient(0, oben - grund, 0, flaeche.height);
+      verlauf.addColorStop(0, "rgba(0, 0, 0, 0)");
+      verlauf.addColorStop(1, "rgba(0, 0, 0, 0.72)");
+      stift.fillStyle = verlauf;
+      stift.fillRect(0, oben - grund, flaeche.width, balken + grund);
+
+      stift.textBaseline = "top";
+      stift.shadowColor = "rgba(0, 0, 0, 0.85)";
+      stift.shadowBlur = Math.round(grund / 3);
+      stift.fillStyle = "#ffffff";
+
+      const links = Math.round(luft * 1.2);
+      const platz = flaeche.width - links * 2;
+      let y = oben + luft;
+      zeilen.forEach((zeile, i) => {
+        if (i === 0) {
+          stift.font = "600 " + Math.round(grund * 1.3)
+            + "px -apple-system, Segoe UI, Arial, sans-serif";
+          stift.fillStyle = "#ffffff";
+        } else {
+          stift.font = Math.round(grund) + "px -apple-system, Segoe UI, Arial, sans-serif";
+          stift.fillStyle = "rgba(255, 255, 255, 0.92)";
+        }
+        let text = zeile;
+        while (text.length > 4 && stift.measureText(text).width > platz) {
+          text = text.slice(0, -2);            // zu lange Zeile kürzen statt überlaufen
+        }
+        if (text !== zeile) text = text.replace(/[\s·]+$/, "") + "…";
+        stift.fillText(text, links, y);
+        y += i === 0 ? hoeheErste + abstand : hoeheWeitere + abstand;
+      });
+      stift.shadowBlur = 0;
+    }
+
+    const fertig = await new Promise((f) => flaeche.toBlob(f, "image/jpeg", 0.85));
+    if (!fertig) return datei;
+    if (!zeilen.length && fertig.size >= datei.size) return datei;
+    return new File([fertig], datei.name.replace(/\.(hei[cf]|png|tiff?|webp)$/i, ".jpg"),
                     { type: "image/jpeg" });
   } catch (err) {
     return datei;
@@ -196,6 +260,11 @@ async function fotosAufnehmen(dateien) {
     }
     f.ort = await ortsname(f.daten.lat, f.daten.lon);
     zuordnen(f);
+    f.fertig = await fotoAufbereiten(f);
+    if (f.fertig !== f.datei) {
+      URL.revokeObjectURL(f.vorschau);
+      f.vorschau = URL.createObjectURL(f.fertig);     // Vorschau zeigt das fertige Foto
+    }
     zeichneFotos();
   }
 }
@@ -277,7 +346,7 @@ async function anMailUebergeben(gruppe, regel) {
   const an = (regel.empfaenger || []).join(", ");
 
   const dateien = [];
-  for (const f of gruppe) dateien.push(await vielleichtVerkleinern(f.datei));
+  for (const f of gruppe) dateien.push(f.fertig || await fotoAufbereiten(f));
 
   try { await navigator.clipboard.writeText(an); } catch (e) { /* ohne Zwischenablage */ }
 
@@ -348,6 +417,7 @@ $("ziel").onchange = () => {
   }
   fotos.filter((f) => f.zustand !== "fertig").forEach(zuordnen);
   zeichneFotos();
+  fotosNeuAufbereiten();
 };
 
 /* ---------------------------------------------------------------- Regeln */
@@ -577,12 +647,27 @@ function zeichneOptionen() {
   $("opt-geocode").checked = !!optionen.geocode;
   $("opt-standort").checked = !!optionen.standort;
   $("opt-kleiner").checked = !!optionen.kleiner;
+  $("opt-stempel").checked = !!optionen.stempel;
 }
 
-["geocode", "standort", "kleiner"].forEach((name) => {
+async function fotosNeuAufbereiten() {
+  for (const f of fotos) {
+    if (f.zustand === "liest" || f.zustand === "fertig") continue;
+    const neu = await fotoAufbereiten(f);
+    if (neu !== f.fertig) {
+      URL.revokeObjectURL(f.vorschau);
+      f.fertig = neu;
+      f.vorschau = URL.createObjectURL(neu);
+    }
+  }
+  zeichneFotos();
+}
+
+["geocode", "standort", "kleiner", "stempel"].forEach((name) => {
   $("opt-" + name).onchange = () => {
     optionen[name] = $("opt-" + name).checked;
     optionenSichern();
+    if (name === "stempel" || name === "kleiner") fotosNeuAufbereiten();
   };
 });
 

@@ -20,6 +20,8 @@ Keine Anmeldung, kein Konto, kein Server, kein PC. Fotos und Regeln bleiben auf 
   Koordinatenpaar aus Google Maps (einfach einfügen, es wird selbst aufgeteilt)
 - **Mail-Vorlagen** mit Platzhaltern: `{dateiname}` `{datum}` `{koordinaten}` `{ort}` `{karte}`
   `{regel}` `{hoehe}` `{kamera}` `{heute}`
+- **Geodaten im Bild** — Koordinaten, Aufnahmezeit, Höhe, Ort und Regelname werden unten ins
+  Foto eingeblendet, damit sie auch im Ausdruck und in der Akte stehen (abschaltbar unter *Mehr*)
 - **Mehrere Fotos auf einmal** — nach Regeln gruppiert, je Regel eine Mail
 - **Verlauf** — was wann an wen ging
 - **Sicherung** — Regeln als Datei exportieren und auf einem anderen Gerät einlesen
@@ -32,6 +34,9 @@ Keine Anmeldung, kein Konto, kein Server, kein PC. Fotos und Regeln bleiben auf 
   Empfängeradresse in die Zwischenablage, sodass du sie mit einem Tipp einfügst.
 - **Keine Hintergrund-Automatik.** iOS lässt keine Web-App unbeaufsichtigt in die
   Fotomediathek schauen. Du wählst die Fotos, alles danach läuft automatisch.
+- **Eingebrannte Daten ersetzen EXIF.** Beim Einblenden wird das Foto neu gespeichert; die
+  unsichtbaren EXIF-Daten gehen dabei verloren. Dafür sind die Koordinaten im Bild selbst
+  sichtbar — und im Mailtext stehen sie ohnehin.
 - **Geodaten müssen im Foto stecken.** Sonst hilft der Standort des Handys (Schalter unter
   *Mehr*) oder die Auswahl der Regel von Hand.
 - **Standort und Offline-Betrieb** verlangen eine verschlüsselte Adresse (`https://…`). Über
