@@ -1,6 +1,6 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.2";
+const VERSION = "1.3";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
@@ -150,6 +150,23 @@ function werteFuer(regel, foto) {
 const fuelle = (vorlage, werte) =>
   Object.keys(werte).reduce((t, k) => t.split("{" + k + "}").join(werte[k]), vorlage || "");
 
+/* Bild zum Bearbeiten laden. Safari mag createImageBitmap nicht bei jedem Format,
+   deshalb der Rückfall über ein Bild-Element. */
+async function bildLaden(datei) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      return await createImageBitmap(datei);
+    } catch (err) { /* unten weiter */ }
+  }
+  return new Promise((erfolg, fehler) => {
+    const adresse = URL.createObjectURL(datei);
+    const bild = new Image();
+    bild.onload = () => { erfolg(bild); setTimeout(() => URL.revokeObjectURL(adresse), 2000); };
+    bild.onerror = () => { URL.revokeObjectURL(adresse); fehler(new Error("Bild nicht lesbar")); };
+    bild.src = adresse;
+  });
+}
+
 /* Zeilen, die unten ins Foto geschrieben werden */
 function stempelZeilen(foto) {
   if (foto.daten.lat === null) return [];
@@ -170,7 +187,7 @@ async function fotoAufbereiten(foto) {
   if (!zeilen.length && !verkleinern) return datei;
 
   try {
-    const bild = await createImageBitmap(datei);
+    const bild = await bildLaden(datei);
     const faktor = verkleinern ? Math.min(1, 1600 / Math.max(bild.width, bild.height)) : 1;
     const flaeche = document.createElement("canvas");
     flaeche.width = Math.round(bild.width * faktor);
@@ -224,11 +241,16 @@ async function fotoAufbereiten(foto) {
     }
 
     const fertig = await new Promise((f) => flaeche.toBlob(f, "image/jpeg", 0.85));
-    if (!fertig) return datei;
+    if (!fertig) throw new Error("Bild konnte nicht gespeichert werden");
     if (!zeilen.length && fertig.size >= datei.size) return datei;
+    foto.stempelFehler = "";
     return new File([fertig], datei.name.replace(/\.(hei[cf]|png|tiff?|webp)$/i, ".jpg"),
                     { type: "image/jpeg" });
   } catch (err) {
+    if (zeilen.length) {
+      foto.stempelFehler = "Geodaten konnten nicht ins Bild geschrieben werden ("
+        + err.message + ") – sie stehen aber im Mailtext.";
+    }
     return datei;
   }
 }
@@ -331,6 +353,7 @@ function zeichneFotos() {
         <span class="zustand z-${f.zustand}">${zustandText}</span>
         <div class="meta">${f.regel ? "An: " + esc(f.regel.name) + " · "
           + esc((f.regel.empfaenger || []).join(", ")) : esc(f.grund)}</div>
+        ${f.stempelFehler ? `<div class="meta warnung">${esc(f.stempelFehler)}</div>` : ""}
       </div>
       <button class="weg" data-weg="${f.id}" aria-label="Entfernen">×</button>
     </div>`;

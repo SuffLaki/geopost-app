@@ -1,7 +1,7 @@
 /* GeoPost - Service Worker: die App vollständig offline bereithalten.
    VERSION beim Ändern hochzählen, damit Geräte die neue Fassung laden. */
 
-const VERSION = "geopost-app-v3";
+const VERSION = "geopost-app-v4";
 const DATEIEN = [
   "./",
   "./index.html",
@@ -27,13 +27,19 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const adresse = new URL(e.request.url);
   if (adresse.origin !== self.location.origin) return;   // Ortsnamen nie aus dem Speicher
+
+  // Erst das Netz, dann der Speicher: so kommt jede neue Fassung sofort an,
+  // und ohne Verbindung laeuft die App trotzdem weiter.
   e.respondWith(
-    caches.match(e.request).then((treffer) => treffer || fetch(e.request).then((antwort) => {
-      if (antwort && antwort.ok) {
-        const kopie = antwort.clone();
-        caches.open(VERSION).then((s) => s.put(e.request, kopie));
-      }
-      return antwort;
-    }).catch(() => caches.match("./index.html")))
+    fetch(e.request)
+      .then((antwort) => {
+        if (antwort && antwort.ok) {
+          const kopie = antwort.clone();
+          caches.open(VERSION).then((s) => s.put(e.request, kopie));
+        }
+        return antwort;
+      })
+      .catch(() => caches.match(e.request)
+        .then((treffer) => treffer || caches.match("./index.html")))
   );
 });
