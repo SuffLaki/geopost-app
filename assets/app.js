@@ -1,6 +1,6 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.1";
+const VERSION = "1.2";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
@@ -66,11 +66,11 @@ function neueRegel(name) {
 }
 
 /* ---------------------------------------------------------------- Hilfen */
-function datumText(roh) {
+function datumText(roh, vonDatei) {
   if (!roh) return "unbekannt";
   const m = String(roh).match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2})/);
   if (!m) return String(roh);
-  return `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}`;
+  return `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}` + (vonDatei ? " (Dateidatum)" : "");
 }
 
 async function ortsname(lat, lon) {
@@ -135,7 +135,7 @@ function werteFuer(regel, foto) {
       + (foto.standortVomHandy ? " (Standort des Handys)" : "");
   return {
     dateiname: foto.name,
-    datum: datumText(foto.daten.aufgenommen),
+    datum: datumText(foto.daten.aufgenommen, foto.datumVonDatei),
     koordinaten: koord,
     ort: foto.ort || (lat === null ? "unbekannt" : koord),
     karte: lat === null ? "-"
@@ -155,7 +155,7 @@ function stempelZeilen(foto) {
   if (foto.daten.lat === null) return [];
   const koord = foto.daten.lat.toFixed(6) + ", " + foto.daten.lon.toFixed(6)
     + (foto.standortVomHandy ? "  (Standort des Handys)" : "");
-  const zweite = [datumText(foto.daten.aufgenommen),
+  const zweite = [datumText(foto.daten.aufgenommen, foto.datumVonDatei),
                   foto.daten.hoehe === null ? "" : Math.round(foto.daten.hoehe) + " m ü. NN"]
     .filter(Boolean).join("   ·   ");
   const dritte = [foto.ort, foto.regel ? foto.regel.name : ""].filter(Boolean).join("   ·   ");
@@ -250,6 +250,13 @@ async function fotosAufnehmen(dateien) {
 
   for (const f of fotos.filter((x) => x.zustand === "liest")) {
     f.daten = await fotoDatenLesen(f.datei);
+    if (!f.daten.aufgenommen && f.datei.lastModified) {
+      const d = new Date(f.datei.lastModified);
+      const zwei = (n) => String(n).padStart(2, "0");
+      f.daten.aufgenommen = d.getFullYear() + ":" + zwei(d.getMonth() + 1) + ":"
+        + zwei(d.getDate()) + " " + zwei(d.getHours()) + ":" + zwei(d.getMinutes()) + ":00";
+      f.datumVonDatei = true;
+    }
     if (f.daten.lat === null && optionen.standort) {
       try {
         const s = await standortHolen();
@@ -289,6 +296,10 @@ function kopfhoeheSetzen() {
   const kopf = document.querySelector(".kopf");
   document.documentElement.style.setProperty("--kopfhoehe",
     (kopf ? kopf.offsetHeight : 58) + "px");
+  // die Reiterleiste darf die Knöpfe darüber nie verdecken
+  const tabs = document.querySelector(".tabs");
+  document.documentElement.style.setProperty("--tabhoehe",
+    (tabs ? tabs.offsetHeight : 66) + "px");
 }
 
 function zeichneFotos() {
@@ -313,7 +324,7 @@ function zeichneFotos() {
       <img src="${f.vorschau}" alt="">
       <div class="mitte">
         <span class="name">${esc(f.name)}</span>
-        <div class="meta">${esc(datumText(f.daten.aufgenommen))} ·
+        <div class="meta">${esc(datumText(f.daten.aufgenommen, f.datumVonDatei))} ·
           ${(f.datei.size / 1048576).toFixed(1)} MB</div>
         <div class="meta">${esc(koord)}${f.standortVomHandy ? " (Handy-Standort)" : ""}${
           f.ort ? " · " + esc(f.ort) : ""}</div>
@@ -728,6 +739,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 }
 
 window.addEventListener("resize", kopfhoeheSetzen);
+window.addEventListener("orientationchange", () => setTimeout(kopfhoeheSetzen, 300));
 
 regeln = lies(SCHLUESSEL.regeln, []);
 optionen = Object.assign(optionen, lies(SCHLUESSEL.opt, {}));
