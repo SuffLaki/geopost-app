@@ -1,0 +1,17 @@
+{
+  "name": "GeoPost",
+  "short_name": "GeoPost",
+  "description": "Fotos mit Geodaten an die richtige Adresse weitergeben",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1319",
+  "theme_color": "#1d6fe0",
+  "lang": "de",
+  "icons": [
+    { "src": "assets/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

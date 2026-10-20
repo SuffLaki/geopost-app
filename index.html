@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>GeoPost</title>
+<meta name="description" content="Fotos mit Geodaten an die richtige Adresse weitergeben">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GeoPost">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1d6fe0">
+<meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="logo">GP</div>
+  <div class="kopf-text">
+    <strong>GeoPost</strong>
+    <span id="kopf-status">Fotos nach Ort an die richtige Adresse</span>
+  </div>
+</header>
+
+<main>
+  <!-- ---------------------------------------------------------- Senden -->
+  <section id="seite-senden" class="seite aktiv">
+    <div class="waehlen">
+      <label class="grossknopf">
+        <input id="kamera" type="file" accept="image/*" capture="environment" multiple hidden>
+        <span class="icon">▣</span><span>Foto aufnehmen</span>
+      </label>
+      <label class="grossknopf leise">
+        <input id="galerie" type="file" accept="image/*" multiple hidden>
+        <span class="icon">▤</span><span>Aus Fotos wählen</span>
+      </label>
+    </div>
+
+    <div class="karte">
+      <label class="feld-label" for="ziel">Empfänger</label>
+      <select id="ziel"></select>
+      <p class="hinweis" id="ziel-hinweis">Automatisch: GeoPost liest die Geodaten aus jedem Foto
+        und nimmt die erste Regel, deren Umkreis passt.</p>
+    </div>
+
+    <div id="liste"></div>
+
+    <div id="leer" class="leer">
+      <p><strong>Noch keine Fotos ausgewählt.</strong></p>
+      <p class="hinweis">Fotos aus der Kamera enthalten die Geodaten automatisch — solange am
+        iPhone unter <em>Einstellungen → Datenschutz &amp; Sicherheit → Ortungsdienste → Kamera</em>
+        der Zugriff erlaubt ist.</p>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Regeln -->
+  <section id="seite-regeln" class="seite">
+    <div class="zeile-kopf">
+      <h2>Regeln</h2>
+      <button id="regel-neu" class="btn-klein stark">+ Neue Regel</button>
+    </div>
+    <p class="hinweis">Eine Regel beantwortet: <strong>welche Fotos</strong> gehen an
+      <strong>welche Adresse</strong>. Von oben nach unten geprüft — die erste passende gewinnt.</p>
+    <div id="regeln"></div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Verlauf -->
+  <section id="seite-verlauf" class="seite">
+    <div class="zeile-kopf">
+      <h2>Verlauf</h2>
+      <button id="verlauf-leeren" class="btn-klein">Leeren</button>
+    </div>
+    <div id="verlauf"></div>
+  </section>
+
+  <!-- ---------------------------------------------------------- Mehr -->
+  <section id="seite-mehr" class="seite">
+    <h2>Einstellungen</h2>
+    <div class="karte">
+      <label class="schalter"><span><strong>Ortsnamen online nachschlagen</strong><br>
+        <small>Macht aus Koordinaten eine Adresse. Dafür gehen die Koordinaten an
+        OpenStreetMap. Aus = es steht nur die Koordinate samt Kartenlink in der Mail.</small></span>
+        <input type="checkbox" id="opt-geocode"></label>
+      <label class="schalter"><span><strong>Standort des Handys ersatzweise nutzen</strong><br>
+        <small>Nur für Fotos, in denen selbst keine Geodaten stecken.</small></span>
+        <input type="checkbox" id="opt-standort"></label>
+      <label class="schalter"><span><strong>Fotos vor dem Senden verkleinern</strong><br>
+        <small>Spart Datenvolumen. Die Koordinaten stehen ohnehin im Mailtext.</small></span>
+        <input type="checkbox" id="opt-kleiner"></label>
+    </div>
+
+    <h2>Regeln sichern</h2>
+    <div class="karte">
+      <p class="hinweis" style="margin-top:0">Deine Regeln liegen nur in diesem Gerät. Mit der
+        Sicherung nimmst du sie auf ein anderes Gerät mit oder bewahrst sie auf.</p>
+      <button id="export" class="btn">Regeln als Datei sichern</button>
+      <label class="btn datei-knopf" style="margin-top:9px">
+        <input id="import" type="file" accept="application/json,.json" hidden>
+        <span>Sicherung einlesen</span>
+      </label>
+    </div>
+
+    <h2>Aufs iPhone</h2>
+    <div class="karte">
+      <p class="hinweis" style="margin-top:0">So liegt GeoPost als App auf dem Home-Bildschirm —
+        mit eigenem Symbol, im Vollbild und ohne Browserleiste.</p>
+      <ol class="schritte">
+        <li>Diese Seite in <strong>Safari</strong> öffnen.</li>
+        <li>Unten auf <strong>Teilen</strong> tippen (Quadrat mit Pfeil nach oben).</li>
+        <li><strong>Zum Home-Bildschirm</strong> wählen, dann <strong>Hinzufügen</strong>.</li>
+      </ol>
+      <p class="hinweis" id="install-status"></p>
+    </div>
+
+    <h2>Wie der Versand läuft</h2>
+    <div class="karte">
+      <p class="hinweis" style="margin-top:0">GeoPost arbeitet ohne Server: Die Fotos und deine
+        Regeln verlassen das Gerät nicht. Für den Versand übergibt die App Foto und fertigen
+        Text an deine Mail-App — dort steht alles bereit, du tippst nur noch auf
+        <em>Senden</em>. Die Empfängeradresse legt GeoPost dabei in die Zwischenablage, damit du
+        sie mit einem Tipp einfügen kannst.</p>
+    </div>
+    <p class="fuss">GeoPost · alles bleibt auf diesem Gerät · <span id="version"></span></p>
+  </section>
+</main>
+
+<div id="sendeleiste" class="sendeleiste" hidden>
+  <button id="senden" class="btn-haupt">An Mail übergeben</button>
+  <button id="leeren" class="btn">Leeren</button>
+</div>
+
+<nav class="tabs">
+  <button class="tab aktiv" data-seite="senden"><span>▲</span>Senden</button>
+  <button class="tab" data-seite="regeln"><span>◎</span>Regeln</button>
+  <button class="tab" data-seite="verlauf"><span>≡</span>Verlauf</button>
+  <button class="tab" data-seite="mehr"><span>⚙</span>Mehr</button>
+</nav>
+
+<!-- ---------------------------------------------------------- Regel bearbeiten -->
+<div id="editor" class="vollbild" hidden>
+  <div class="vollbild-kopf">
+    <button id="editor-zu" class="text-btn">Fertig</button>
+    <strong id="editor-titel">Regel</strong>
+    <button id="editor-loeschen" class="text-btn warn">Löschen</button>
+  </div>
+  <div class="vollbild-inhalt">
+    <div class="karte">
+      <label class="feld-label" for="e-name">Name</label>
+      <input id="e-name" type="text" placeholder="z. B. Baustelle Ulm-Nord">
+      <label class="schalter"><span><strong>Regel aktiv</strong></span>
+        <input type="checkbox" id="e-aktiv"></label>
+    </div>
+
+    <h3 class="ueberschrift">An wen</h3>
+    <div class="karte">
+      <label class="feld-label" for="e-empfaenger">Empfänger (mehrere mit Komma trennen)</label>
+      <input id="e-empfaenger" type="email" multiple placeholder="bauleitung@firma.de"
+             autocapitalize="off" autocomplete="off">
+    </div>
+
+    <h3 class="ueberschrift">Welche Fotos</h3>
+    <div class="karte">
+      <label class="schalter"><span><strong>Nur Fotos aus einem Umkreis</strong><br>
+        <small>Aus = diese Regel nimmt jedes Foto, das vorher keine andere Regel genommen hat.</small></span>
+        <input type="checkbox" id="e-geo-aktiv"></label>
+      <div id="e-geo-felder" hidden>
+        <div class="zwei">
+          <div><label class="feld-label" for="e-lat">Breitengrad</label>
+            <input id="e-lat" type="text" inputmode="decimal"></div>
+          <div><label class="feld-label" for="e-lon">Längengrad</label>
+            <input id="e-lon" type="text" inputmode="decimal"></div>
+        </div>
+        <label class="feld-label" for="e-radius">Radius in Metern</label>
+        <input id="e-radius" type="tel" inputmode="numeric">
+        <button id="e-mein-standort" class="btn" style="margin-top:10px">
+          Mein jetziger Standort als Mittelpunkt</button>
+        <label class="btn datei-knopf" style="margin-top:9px">
+          <input id="e-koord-foto" type="file" accept="image/*" hidden>
+          <span>Mittelpunkt aus einem Foto übernehmen</span>
+        </label>
+        <p class="hinweis">Oder in Google Maps die Stelle lange antippen, die Koordinaten
+          kopieren und oben ins Feld Breitengrad einfügen — das Paar wird selbst aufgeteilt.</p>
+        <a id="e-karte" class="link" href="#" target="_blank" rel="noopener">Mittelpunkt auf der
+          Karte ansehen</a>
+      </div>
+    </div>
+
+    <h3 class="ueberschrift">Mail-Inhalt</h3>
+    <div class="karte">
+      <label class="feld-label" for="e-betreff">Betreff</label>
+      <input id="e-betreff" type="text">
+      <label class="feld-label" for="e-text">Text</label>
+      <textarea id="e-text" rows="7"></textarea>
+      <div class="chips" id="e-platzhalter"></div>
+    </div>
+
+    <div class="karte">
+      <div class="zwei">
+        <button id="e-hoch" class="btn">▲ nach oben</button>
+        <button id="e-runter" class="btn">▼ nach unten</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="assets/exif.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
