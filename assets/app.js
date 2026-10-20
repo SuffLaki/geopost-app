@@ -1,6 +1,6 @@
 /* GeoPost - eigenständige App. Alles bleibt auf dem Gerät: keine Anmeldung, kein Server. */
 
-const VERSION = "1.5";
+const VERSION = "1.6";
 const SCHLUESSEL = { regeln: "geopost_regeln", opt: "geopost_optionen",
                      verlauf: "geopost_verlauf" };
 const PLATZHALTER = ["dateiname", "datum", "koordinaten", "ort", "karte", "regel",
@@ -19,7 +19,8 @@ const STANDARD_TEXT =
   + "Regel:        {regel}\n";
 
 let regeln = [];
-let optionen = { geocode: false, standort: false, kleiner: true, stempel: true };
+let optionen = { geocode: false, standort: false, kleiner: true, stempel: true,
+                 weg: "teilen" };
 let verlauf = [];
 let fotos = [];
 let laufendeId = 1;
@@ -410,6 +411,25 @@ document.addEventListener("keydown", (ev) => {
 });
 
 /* ---------------------------------------------------------------- Übergabe an Mail */
+/* Das Foto als PNG in die Zwischenablage legen - so lässt es sich im Mail-Entwurf
+   mit einem Tipp einfügen. Safari nimmt hier ein Promise entgegen, deshalb bremsen die
+   vorherigen Schritte den Aufruf nicht aus. */
+function bildInZwischenablage(datei) {
+  if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
+    return Promise.reject(new Error("Dieses Gerät gibt die Zwischenablage nicht frei"));
+  }
+  const alsPng = (async () => {
+    const bild = await bildLaden(datei);
+    const flaeche = document.createElement("canvas");
+    flaeche.width = bild.width;
+    flaeche.height = bild.height;
+    flaeche.getContext("2d").drawImage(bild, 0, 0);
+    return new Promise((f, x) => flaeche.toBlob(
+      (b) => (b ? f(b) : x(new Error("Bild nicht umwandelbar"))), "image/png"));
+  })();
+  return navigator.clipboard.write([new ClipboardItem({ "image/png": alsPng })]);
+}
+
 async function anMailUebergeben(gruppe, regel) {
   const werte = werteFuer(regel, gruppe[0]);
   const betreff = fuelle(regel.betreff || STANDARD_BETREFF,
@@ -421,16 +441,34 @@ async function anMailUebergeben(gruppe, regel) {
   const dateien = [];
   for (const f of gruppe) dateien.push(f.fertig || await fotoAufbereiten(f));
 
-  try { await navigator.clipboard.writeText(an); } catch (e) { /* ohne Zwischenablage */ }
-
-  if (navigator.canShare && navigator.canShare({ files: dateien })) {
-    await navigator.share({ files: dateien, title: betreff, text: an + "\n\n" + text });
-    return "geteilt";
-  }
-  // Ohne Teilen-Funktion: Mail mit Empfänger und Text öffnen, Fotos von Hand anhängen
-  location.href = "mailto:" + encodeURIComponent(an)
+  const mailLink = "mailto:" + encodeURIComponent(an)
     + "?subject=" + encodeURIComponent(betreff)
     + "&body=" + encodeURIComponent(text);
+
+  // Weg 1: Mail-Entwurf. Adresse, Betreff und Text stehen drin, das Foto wird eingefügt.
+  // Sinnvoll nur für ein einzelnes Foto - in der Zwischenablage liegt immer nur eines.
+  if (optionen.weg === "entwurf" && dateien.length === 1) {
+    let abgelegt = true;
+    try {
+      await bildInZwischenablage(dateien[0]);
+    } catch (err) {
+      abgelegt = false;
+    }
+    location.href = mailLink;
+    return abgelegt ? "entwurf" : "entwurf-ohne-bild";
+  }
+
+  // Weg 2: Teilen. Das Foto geht als echter Anhang mit; Adresse und Betreff kann iOS
+  // dabei nicht übernehmen, deshalb liegt die Adresse in der Zwischenablage.
+  if (navigator.canShare && navigator.canShare({ files: dateien })) {
+    try { await navigator.clipboard.writeText(an); } catch (e) { /* ohne Zwischenablage */ }
+    await navigator.share({ files: dateien, title: betreff,
+                            text: "An: " + an + "\nBetreff: " + betreff
+                              + "\n\n" + text });
+    return "geteilt";
+  }
+
+  location.href = mailLink;
   return "mailto";
 }
 
@@ -454,16 +492,27 @@ $("senden").onclick = async () => {
     try {
       const art = await anMailUebergeben(gruppe, regel);
       gruppe.forEach((f) => { f.zustand = "fertig"; });
+      const meldung = {
+        entwurf: "Mail ist vorbereitet. Das Foto liegt in der Zwischenablage: im Text lange "
+          + "tippen und „Einsetzen“ wählen.",
+        "entwurf-ohne-bild": "Mail ist vorbereitet, das Foto kam aber nicht in die "
+          + "Zwischenablage. Häng es aus der Fotos-App an.",
+        geteilt: "Adresse liegt in der Zwischenablage – im Empfängerfeld einfügen. Der "
+          + "Betreff steht oben im Text.",
+        mailto: "Mail geöffnet. Das Foto musst du von Hand anhängen.",
+      }[art] || "Fertig.";
       verlauf.unshift({
         zeit: new Date().toLocaleString("de-DE"),
         regel: regel.name, an: (regel.empfaenger || []).join(", "),
         dateien: gruppe.map((f) => f.name),
         ort: gruppe[0].ort || werteFuer(regel, gruppe[0]).koordinaten,
-        art: art === "mailto" ? "Mail geöffnet (Fotos von Hand anhängen)" : "an Mail übergeben",
+        art: art.indexOf("entwurf") === 0 ? "Mail-Entwurf geöffnet"
+          : (art === "mailto" ? "Mail geöffnet (Foto von Hand anhängen)"
+                              : "an Mail übergeben"),
       });
       verlaufSichern();
       zeichneVerlauf();
-      toast("Adresse ist in der Zwischenablage – im Empfängerfeld einfügen.");
+      toast(meldung);
     } catch (err) {
       if (err && err.name === "AbortError") toast("Abgebrochen.");
       else toast("Übergabe nicht möglich: " + err.message, true);
@@ -720,7 +769,20 @@ $("verlauf-leeren").onclick = () => {
 };
 
 /* ---------------------------------------------------------------- Einstellungen */
+function wegHinweis() {
+  $("weg-hinweis").textContent = optionen.weg === "entwurf"
+    ? "Die Mail öffnet sich mit Adresse, Betreff und Text. Das Foto liegt in der "
+      + "Zwischenablage — im Text lange tippen und „Einsetzen“ wählen; es steht dann im "
+      + "Text statt als Anhang. Bei mehreren Fotos auf einmal nimmt GeoPost den Weg über "
+      + "Teilen."
+    : "Das Foto geht als echter Anhang mit, auch mehrere auf einmal. Adresse und Betreff "
+      + "kann iOS beim Teilen nicht übernehmen: Die Adresse liegt deshalb in der "
+      + "Zwischenablage, der Betreff steht oben im Text.";
+}
+
 function zeichneOptionen() {
+  $("opt-weg").value = optionen.weg || "teilen";
+  wegHinweis();
   $("opt-geocode").checked = !!optionen.geocode;
   $("opt-standort").checked = !!optionen.standort;
   $("opt-kleiner").checked = !!optionen.kleiner;
@@ -739,6 +801,12 @@ async function fotosNeuAufbereiten() {
   }
   zeichneFotos();
 }
+
+$("opt-weg").onchange = () => {
+  optionen.weg = $("opt-weg").value;
+  optionenSichern();
+  wegHinweis();
+};
 
 ["geocode", "standort", "kleiner", "stempel"].forEach((name) => {
   $("opt-" + name).onchange = () => {

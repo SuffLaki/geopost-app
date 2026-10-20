@@ -30,10 +30,14 @@ Keine Anmeldung, kein Konto, kein Server, kein PC. Fotos und Regeln bleiben auf 
 
 ## Grenzen, ehrlich benannt
 
-- **Den letzten Tipp machst du.** Ein Browser darf keine Mail mit Anhang von sich aus
-  verschicken: `mailto:` kann keine Anhänge, SMTP geht im Browser nicht. GeoPost legt deshalb
-  alles fertig in die Mail-App — Foto als Anhang, Betreff und Text ausgefüllt — und die
-  Empfängeradresse in die Zwischenablage, sodass du sie mit einem Tipp einfügst.
+- **Den letzten Tipp machst du, und iOS lässt nicht alles auf einmal zu.** Ein Browser darf
+  keine Mail selbst verschicken. Für die Übergabe an die Mail-App gibt es unter *Mehr* zwei
+  Wege, weil iOS keinen anbietet, der beides kann:
+  - **Teilen** — das Foto geht als echter Anhang mit, auch mehrere auf einmal. Empfänger und
+    Betreff kann das Teilen-Fenster nicht übernehmen; die Adresse liegt deshalb in der
+    Zwischenablage, der Betreff steht oben im Text.
+  - **Mail-Entwurf** — Adresse, Betreff und Text sind ausgefüllt. Das Foto liegt in der
+    Zwischenablage und wird im Text eingefügt, steht dann aber im Text statt als Anhang.
 - **Keine Hintergrund-Automatik.** iOS lässt keine Web-App unbeaufsichtigt in die
   Fotomediathek schauen. Du wählst die Fotos, alles danach läuft automatisch.
 - **Eingebrannte Daten ersetzen EXIF.** Beim Einblenden wird das Foto neu gespeichert; die
